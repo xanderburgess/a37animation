@@ -17,7 +17,7 @@ class AsciiRenderer {
         this.mouseY = 0;
         this.mouseMoving = false;
         this.mouseTimeout = null;
-        this.hoverRadius = 8; // Larger radius for more visible effect
+        this.hoverRadius = 10; // Larger radius for more visible effect
         
         // Mouse trail system
         this.mouseTrail = []; // Array to store recent mouse positions
@@ -25,7 +25,7 @@ class AsciiRenderer {
         this.trailDecayRate = 0.75; // Faster decay for more dynamic stream
 
         // Precalculate constants used in render loop
-        this.contrast = 1;
+        this.contrast = 1.0;
         this.minBrightness = 0.1;
         this.minModelColor = 40;
         
