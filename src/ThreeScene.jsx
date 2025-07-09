@@ -8,7 +8,9 @@ const ThreeScene = () => {
     const [zoom, setZoom] = useState(110);
     const [rotationSpeed, setRotationSpeed] = useState(0.015);
     const [lightStates, setLightStates] = useState([true, true, true, true]);
-    const [selectedModel, setSelectedModel] = useState('/assets/rotations.glb');
+    const [selectedModel, setSelectedModel] = useState('/assets/earth.glb');
+    const [exportSize, setExportSize] = useState(2); // 1x by default
+    const [transparentBackground, setTransparentBackground] = useState(false);
     const asciiRendererRef = useRef(null);
     const cameraRef = useRef(null);
     const lightsRef = useRef([]);
@@ -16,6 +18,8 @@ const ThreeScene = () => {
     const sceneRef = useRef(null);
     const rendererRef = useRef(null);
     const pivotGroupRef = useRef(null);
+    const exportSizeRef = useRef(exportSize);
+    const transparentBackgroundRef = useRef(transparentBackground);
     
     // Available models from your assets folder
     const availableModels = [
@@ -31,24 +35,149 @@ const ThreeScene = () => {
         { path: '/assets/triangles.glb', name: 'Triangles' },
     ];
     
-    // Update the ref when rotationSpeed changes
+    // Update the refs when states change
     useEffect(() => {
         rotationSpeedRef.current = rotationSpeed;
     }, [rotationSpeed]);
+    
+    useEffect(() => {
+        exportSizeRef.current = exportSize;
+    }, [exportSize]);
+    
+    useEffect(() => {
+        transparentBackgroundRef.current = transparentBackground;
+    }, [transparentBackground]);
     
     const FIXED_COLS = 267;
     const FIXED_ROWS = 150;
     const FIXED_ASPECT_RATIO = FIXED_COLS / FIXED_ROWS;
 
     const handleExportImage = () => {
-        const canvas = asciiRendererRef.current.canvas;
-        canvas.toBlob((blob) => {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'a37.png';
-            a.click();
-            URL.revokeObjectURL(url);
+        // Create a NEW ASCII renderer at the export resolution for crisp rendering
+        const currentExportSize = exportSizeRef.current;
+        const exportCols = FIXED_COLS;
+        const exportRows = FIXED_ROWS;
+        
+        // Create a temporary container
+        const tempContainer = document.createElement('div');
+        tempContainer.id = 'temp-ascii-export';
+        tempContainer.style.position = 'absolute';
+        tempContainer.style.left = '-9999px';
+        document.body.appendChild(tempContainer);
+        
+        // Import AsciiRenderer dynamically to create a high-res version
+        import('./asciirenderer.js').then((module) => {
+            const AsciiRenderer = module.default;
+            const exportRenderer = new AsciiRenderer(tempContainer.id, exportCols, exportRows);
+            
+            // Calculate exact dimensions
+            const targetWidth = 2400 * currentExportSize;
+            const spacingFactor = exportRenderer.spacingFactor || 1.2;
+            const rowSpacingFactor = exportRenderer.rowSpacingFactor || 1.2;
+            
+            // Calculate the exact character width needed (as float)
+            const exactCharWidth = targetWidth / (exportCols * spacingFactor);
+            const charWidth = Math.floor(exactCharWidth);
+            const charHeight = charWidth;
+            
+            // Calculate what the actual width would be with integer char sizes
+            const actualWidthWithIntChar = exportCols * charWidth * spacingFactor;
+            
+            // Force exact target dimensions
+            const finalWidth = targetWidth;
+            const finalHeight = Math.round(targetWidth / FIXED_ASPECT_RATIO);
+            
+            // Update the export renderer's properties
+            const dpr = 1;
+            exportRenderer.charWidth = charWidth;
+            exportRenderer.charHeight = charHeight;
+            
+            // Set canvas to exact target size
+            exportRenderer.canvas.width = finalWidth;
+            exportRenderer.canvas.height = finalHeight;
+            exportRenderer.canvas.style.width = `${finalWidth}px`;
+            exportRenderer.canvas.style.height = `${finalHeight}px`;
+            
+            // Calculate scaling to fit exact dimensions
+            const scaleX = finalWidth / actualWidthWithIntChar;
+            const scaleY = finalHeight / (exportRows * charHeight * rowSpacingFactor);
+            
+            exportRenderer.ctx.scale(scaleX, scaleY);
+            exportRenderer.ctx.font = `${charHeight}px "IBM Plex Mono"`;
+            exportRenderer.ctx.textBaseline = 'top';
+            
+            // Copy mouse trail data to export renderer
+            if (asciiRendererRef.current.mouseTrail) {
+                exportRenderer.mouseTrail = [...asciiRendererRef.current.mouseTrail];
+                exportRenderer.mouseX = asciiRendererRef.current.mouseX;
+                exportRenderer.mouseY = asciiRendererRef.current.mouseY;
+                exportRenderer.mouseMoving = asciiRendererRef.current.mouseMoving;
+            }
+            
+            // Create high-res offscreen canvas for Three.js rendering
+            const highResCanvas = document.createElement('canvas');
+            const highResCtx = highResCanvas.getContext('2d', { willReadFrequently: true });
+            highResCanvas.width = exportCols;
+            highResCanvas.height = exportRows;
+            
+            // Render the current Three.js scene at the export resolution
+            rendererRef.current.render(sceneRef.current, cameraRef.current);
+            
+            highResCtx.imageSmoothingEnabled = false;
+            highResCtx.fillStyle = 'black';
+            highResCtx.fillRect(0, 0, exportCols, exportRows);
+            highResCtx.drawImage(rendererRef.current.domElement, 
+                0, 0, rendererRef.current.domElement.width, rendererRef.current.domElement.height,
+                0, 0, exportCols, exportRows
+            );
+            
+            const imageData = highResCtx.getImageData(0, 0, exportCols, exportRows);
+            
+            // Render using the high-res ASCII renderer
+            exportRenderer.render(imageData.data);
+            
+            // Now export the high-res ASCII canvas
+            const exportCanvas = document.createElement('canvas');
+            const exportCtx = exportCanvas.getContext('2d');
+            
+            exportCanvas.width = finalWidth;
+            exportCanvas.height = finalHeight;
+            
+            // Clear for transparency
+            exportCtx.clearRect(0, 0, finalWidth, finalHeight);
+            
+            if (transparentBackgroundRef.current) {
+                // Copy and make white transparent
+                exportCtx.drawImage(exportRenderer.canvas, 0, 0);
+                const imageData = exportCtx.getImageData(0, 0, finalWidth, finalHeight);
+                const data = imageData.data;
+                
+                for (let i = 0; i < data.length; i += 4) {
+                    if (data[i] === 255 && data[i + 1] === 255 && data[i + 2] === 255) {
+                        data[i + 3] = 0;
+                    }
+                }
+                
+                exportCtx.putImageData(imageData, 0, 0);
+            } else {
+                // White background
+                exportCtx.fillStyle = 'white';
+                exportCtx.fillRect(0, 0, finalWidth, finalHeight);
+                exportCtx.drawImage(exportRenderer.canvas, 0, 0);
+            }
+            
+            // Export as PNG
+            exportCanvas.toBlob((blob) => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `a37_${currentExportSize}x.png`;
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                // Cleanup
+                document.body.removeChild(tempContainer);
+            }, 'image/png');
         });
     };
 
@@ -292,7 +421,7 @@ const ThreeScene = () => {
         window.addEventListener('resize', handleResize);
 
         camera.position.set(0, 0, zoom);
-        loadModel(selectedModel);
+        // Don't load model here - let the other useEffect handle it
         render();
 
         // Cleanup
@@ -304,11 +433,11 @@ const ThreeScene = () => {
             cancelAnimationFrame(rafId);
             renderer.dispose();
         };
-    }, [selectedModel]); // Add selectedModel to dependencies
+    }, []); // Remove selectedModel from dependencies
 
     // Update model when selection changes
     useEffect(() => {
-        if (sceneRef.current && rendererRef.current) {
+        if (sceneRef.current && rendererRef.current && asciiRendererRef.current) {
             const loader = new GLTFLoader();
             loader.load(selectedModel, (gltf) => {
                 // Remove old model
@@ -516,27 +645,60 @@ const ThreeScene = () => {
                     ))}
                 </div>
                 
-                <button 
-                    onClick={handleExportImage}
-                    style={{
-                        marginTop: 'auto',
-                        width: '100%',
-                        padding: '12px',
-                        background: 'white',
-                        color: 'black',
-                        border: 'none',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        fontFamily: 'inherit',
-                        fontSize: '14px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontWeight: '500'
-                    }}
-                >
-                    <span>Export [E]</span>
-                </button>
+                <div style={{ marginTop: 'auto' }}>
+                    <div style={{ marginBottom: '15px' }}>
+                        <label style={{ display: 'block', marginBottom: '5px', color: '#999' }}>
+                            Export Size
+                        </label>
+                        <select
+                            value={exportSize}
+                            onChange={(e) => setExportSize(Number(e.target.value))}
+                            className="custom-select"
+                        >
+                            <option value={1}>1x (2400px)</option>
+                            <option value={2}>2x (4800px)</option>
+                            <option value={4}>4x (9600px)</option>
+                            <option value={8}>8x (19200px)</option>
+                        </select>
+                    </div>
+                    
+                    <div style={{ marginBottom: '20px' }}>
+                        <label style={{ cursor: 'pointer', color: '#ccc', display: 'flex', alignItems: 'center' }}>
+                            <input 
+                                type="checkbox" 
+                                checked={transparentBackground}
+                                onChange={(e) => setTransparentBackground(e.target.checked)}
+                                style={{ 
+                                    marginRight: '8px',
+                                    filter: 'grayscale(100%)',
+                                    opacity: '0.8'
+                                }}
+                            />
+                            Transparent Background
+                        </label>
+                    </div>
+                    
+                    <button 
+                        onClick={handleExportImage}
+                        style={{
+                            width: '100%',
+                            padding: '12px',
+                            background: 'white',
+                            color: 'black',
+                            border: 'none',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            fontFamily: 'inherit',
+                            fontSize: '14px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: '500'
+                        }}
+                    >
+                        <span>Export [E]</span>
+                    </button>
+                </div>
             </div>
             
             <div style={{
