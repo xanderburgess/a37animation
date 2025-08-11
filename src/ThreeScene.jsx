@@ -9,7 +9,7 @@ const ThreeScene = () => {
     const [rotationSpeed, setRotationSpeed] = useState(0.015);
     const [lightStates, setLightStates] = useState([true, true, true, true]);
     const [selectedModel, setSelectedModel] = useState('/assets/earth.glb');
-    const [exportSize, setExportSize] = useState(2); // 1x by default
+    const [exportSize, setExportSize] = useState(2); // 2x by default
     const [transparentBackground, setTransparentBackground] = useState(false);
     const asciiRendererRef = useRef(null);
     const cameraRef = useRef(null);
@@ -24,11 +24,11 @@ const ThreeScene = () => {
     // Available models from your assets folder
     const availableModels = [
         { path: '/assets/city.glb', name: 'City' },
-        { path: '/assets/cubes.glb', name: 'Cubes' },
-        { path: '/assets/diamonds.glb', name: 'Diamonds' },
-        { path: '/assets/earth.glb', name: 'Earth' },
         { path: '/assets/forge.glb', name: 'Forge' },
+        { path: '/assets/earth.glb', name: 'Globe' },
+        { path: '/assets/cubes.glb', name: 'Cubes' },
         { path: '/assets/mesh.glb', name: 'Mesh' },
+        { path: '/assets/diamonds.glb', name: 'Diamonds' },
         { path: '/assets/prisms.glb', name: 'Prisms' },
         { path: '/assets/rotations.glb', name: 'Rotations' },
         { path: '/assets/swirls.glb', name: 'Swirls' },
@@ -505,229 +505,445 @@ const ThreeScene = () => {
             padding: '20px',
             boxSizing: 'border-box',
             background: 'white',
-            display: 'flex',
-            gap: '20px',
-            alignItems: 'stretch'
+            position: 'relative'
         }}>
             <style>{`
-                .custom-slider {
+                .square-slider-container {
+                    position: relative;
+                    width: 100%;
+                    height: 8px;
+                    background: #333;
+                    border-radius: 4px;
+                }
+                .square-slider {
                     -webkit-appearance: none;
                     appearance: none;
                     width: 100%;
-                    height: 6px;
-                    background: #333;
+                    height: 8px;
+                    background: transparent;
                     outline: none;
                     cursor: pointer;
-                    border-radius: 3px;
+                    border-radius: 4px;
+                    position: absolute;
+                    top: 0;
+                    left: 0;
                 }
-                .custom-slider::-webkit-slider-thumb {
+                .square-slider::-webkit-slider-thumb {
                     -webkit-appearance: none;
                     appearance: none;
-                    width: 20px;
-                    height: 20px;
-                    background: #666;
-                    border-radius: 10px;
-                    cursor: pointer;
-                }
-                .custom-slider::-moz-range-thumb {
-                    width: 20px;
-                    height: 20px;
-                    background: #666;
-                    border-radius: 10px;
+                    width: 14px;
+                    height: 14px;
+                    background: white;
+                    border-radius: 2px;
                     cursor: pointer;
                     border: none;
+                    margin-top: -3px;
                 }
-                .custom-select {
+                .square-slider::-moz-range-thumb {
+                    width: 14px;
+                    height: 14px;
+                    background: white;
+                    border-radius: 2px;
+                    cursor: pointer;
+                    border: none;
+                    margin-top: -3px;
+                }
+                .model-button {
+                    background: #1F1F1F;
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    padding: 10px 12px;
+                    font-family: 'IBM Plex Mono', monospace;
+                    font-size: 12px;
+                    cursor: pointer;
+                    outline: none;
+                    width: 100%;
+                    text-align: center;
+                    transition: all 0.2s ease;
+                    height: 36px;
+                    box-sizing: border-box;
+                }
+                .model-button:hover {
+                    background: #555;
+                }
+                .model-button.active {
+                    background: #454545;
+                    color: white;
+                }
+                .light-button {
+                    background: #1F1F1F;
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    padding: 10px 12px;
+                    font-family: 'IBM Plex Mono', monospace;
+                    font-size: 12px;
+                    cursor: pointer;
+                    outline: none;
+                    width: 100%;
+                    text-align: center;
+                    transition: all 0.2s ease;
+                    height: 36px;
+                    box-sizing: border-box;
+                }
+                .light-button:hover {
+                    background: #555;
+                }
+                .light-button.active {
+                    background: #454545;
+                    color: white;
+                }
+                .export-button {
+                    background: white;
+                    color: black;
+                    border: none;
+                    border-radius: 4px;
+                    padding: 10px 6px 10px 12px;
+                    font-family: 'IBM Plex Mono', monospace;
+                    font-size: 12px;
+                    cursor: pointer;
+                    outline: none;
+                    width: 100%;
+                    text-align: center;
+                    transition: all 0.2s ease;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    height: 36px;
+                    box-sizing: border-box;
+                }
+                .export-button:hover {
+                    background: #f0f0f0;
+                }
+                .size-button {
                     background: #333;
                     color: white;
                     border: none;
-                    border-radius: 6px;
+                    border-radius: 4px;
                     padding: 8px 12px;
                     font-family: 'IBM Plex Mono', monospace;
-                    font-size: 14px;
+                    font-size: 12px;
                     cursor: pointer;
                     outline: none;
                     width: 100%;
+                    text-align: center;
+                    transition: all 0.2s ease;
                 }
-                .custom-select option {
-                    background: #222;
+                .size-button:hover {
+                    background: #555;
+                }
+                .size-button.active {
+                    background: white;
+                    color: black;
+                }
+                .transparent-button {
+                    background: #333;
                     color: white;
+                    border: none;
+                    border-radius: 4px;
+                    padding: 8px 12px;
+                    font-family: 'IBM Plex Mono', monospace;
+                    font-size: 12px;
+                    cursor: pointer;
+                    outline: none;
+                    width: 100%;
+                    text-align: center;
+                    transition: all 0.2s ease;
+                }
+                .transparent-button:hover {
+                    background: #555;
+                }
+                .transparent-button.active {
+                    background: white;
+                    color: black;
                 }
             `}</style>
+            
+            {/* Full-screen ASCII Container */}
+            <div id="ascii-container" ref={containerRef} style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                zIndex: 0
+            }}></div>
+            
+            {/* Left Column - Logo and Model Settings */}
             <div style={{
-                flex: '0 0 250px',
+                position: 'absolute',
+                top: '20px',
+                left: '20px',
+                width: '250px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                zIndex: 10
+            }}>
+                {/* Logo Box */}
+                <div style={{
+                    background: 'black',
+                    borderRadius: '8px',
+                    padding: '16px',
+                    color: 'white',
+                    fontFamily: 'IBM Plex Mono, monospace',
+                    fontSize: '14px',
+                    width: '218px'
+                }}>
+                    <img 
+                        src="/a37-Logo_a37_White.svg" 
+                        alt="a37" 
+                        style={{ 
+                            height: '20px', 
+                            width: 'auto',
+                            alignSelf: 'flex-start'
+                        }} 
+                    />
+                    <div style={{ color: '#999', fontSize: '12px', marginTop: '4px' }}>
+                        Asset Generator
+                    </div>
+                </div>
+                
+                {/* Model Settings Box */}
+                <div style={{
+                    background: 'black',
+                    borderRadius: '8px',
+                    padding: '16px',
+                    color: 'white',
+                    fontFamily: 'IBM Plex Mono, monospace',
+                    fontSize: '14px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '16px',
+                    width: '218px'
+                }}>
+                    <div style={{ color: '#999', fontSize: '12px' }}>
+                        Model Settings
+                    </div>
+                    
+                    {/* Divider line */}
+                    <div style={{
+                        width: 'calc(100% + 32px)',
+                        height: '1px',
+                        background: '#333',
+                        margin: '0 -16px'
+                    }}></div>
+                    
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '12px', color: '#999', fontSize: '12px' }}>
+                            Model
+                        </label>
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: '1fr 1fr',
+                            gap: '8px'
+                        }}>
+                            {availableModels.map((model) => (
+                                <button
+                                    key={model.path}
+                                    onClick={() => setSelectedModel(model.path)}
+                                    className={`model-button ${selectedModel === model.path ? 'active' : ''}`}
+                                >
+                                    {model.name}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '12px', color: '#999', fontSize: '12px' }}>
+                            Zoom
+                            <span style={{ float: 'right', color: '#fff' }}>{zoom}</span>
+                        </label>
+                        <div className="square-slider-container">
+                            <input 
+                                type="range" 
+                                min="-100" 
+                                max="150" 
+                                value={zoom}
+                                onChange={(e) => setZoom(Number(e.target.value))}
+                                className="square-slider"
+                            />
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '12px', color: '#999', fontSize: '12px' }}>
+                            Rotation Speed
+                            <span style={{ float: 'right', color: '#fff' }}>{rotationSpeed.toFixed(3)}</span>
+                        </label>
+                        <div className="square-slider-container">
+                            <input 
+                                type="range" 
+                                min="0.005" 
+                                max="0.03" 
+                                step="0.001"
+                                value={rotationSpeed}
+                                onChange={(e) => setRotationSpeed(Number(e.target.value))}
+                                className="square-slider"
+                            />
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '12px', color: '#999', fontSize: '12px' }}>
+                            Lights
+                        </label>
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(4, 1fr)',
+                            gap: '8px'
+                        }}>
+                            {lightStates.map((state, index) => (
+                                <button
+                                    key={index}
+                                    onClick={() => toggleLight(index)}
+                                    className={`light-button ${state ? 'active' : ''}`}
+                                >
+                                    {String(index + 1).padStart(2, '0')}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            {/* Export Settings Box - Right side, same width as model settings */}
+            <div style={{
+                position: 'absolute',
+                top: '20px',
+                right: '20px',
+                width: '250px',
                 background: 'black',
                 borderRadius: '8px',
-                padding: '20px',
+                padding: '16px',
                 color: 'white',
                 fontFamily: 'IBM Plex Mono, monospace',
                 fontSize: '14px',
                 display: 'flex',
-                flexDirection: 'column'
+                flexDirection: 'column',
+                gap: '16px',
+                zIndex: 10,
+                width: '218px'
             }}>
-                <img 
-                    src="/a37-Logo_a37_White.svg" 
-                    alt="a37" 
-                    style={{ 
-                        height: '20px', 
-                        width: 'auto',
-                        marginBottom: '20px',
-                        alignSelf: 'flex-start'
-                    }} 
-                />
-                
-                <div style={{ marginBottom: '20px' }}>
-                    <label style={{ display: 'block', marginBottom: '8px', color: '#999' }}>
-                        Model
-                    </label>
-                    <select
-                        value={selectedModel}
-                        onChange={(e) => setSelectedModel(e.target.value)}
-                        className="custom-select"
-                    >
-                        {availableModels.map((model) => (
-                            <option key={model.path} value={model.path}>
-                                {model.name}
-                            </option>
-                        ))}
-                    </select>
+                <div style={{ color: '#999', fontSize: '12px' }}>
+                    Export Settings
                 </div>
                 
-                <div style={{ marginBottom: '15px' }}>
-                    <label style={{ display: 'block', marginBottom: '5px', color: '#999' }}>
-                        Zoom: {zoom}
-                    </label>
-                    <input 
-                        type="range" 
-                        min="-100" 
-                        max="150" 
-                        value={zoom}
-                        onChange={(e) => setZoom(Number(e.target.value))}
-                        className="custom-slider"
-                    />
-                </div>
+                {/* Divider line */}
+                <div style={{
+                    width: 'calc(100% + 32px)',
+                    height: '1px',
+                    background: '#333',
+                    margin: '0 -16px'
+                }}></div>
                 
-                <div style={{ marginBottom: '15px' }}>
-                    <label style={{ display: 'block', marginBottom: '5px', color: '#999' }}>
-                        Rotation Speed: {rotationSpeed.toFixed(3)}
+                <div>
+                    <label style={{ display: 'block', marginBottom: '12px', color: '#999', fontSize: '12px' }}>
+                        Size
                     </label>
-                    <input 
-                        type="range" 
-                        min="0.005" 
-                        max="0.03" 
-                        step="0.001"
-                        value={rotationSpeed}
-                        onChange={(e) => setRotationSpeed(Number(e.target.value))}
-                        className="custom-slider"
-                    />
-                </div>
-                
-                <div style={{ marginBottom: '20px' }}>
-                    <label style={{ display: 'block', marginBottom: '10px', color: '#999' }}>
-                        Lights:
-                    </label>
-                    {lightStates.map((state, index) => (
-                        <div key={index} style={{ marginBottom: '5px' }}>
-                            <label style={{ cursor: 'pointer', color: '#ccc' }}>
-                                <input 
-                                    type="checkbox" 
-                                    checked={state}
-                                    onChange={() => toggleLight(index)}
-                                    style={{ 
-                                        marginRight: '8px',
-                                        filter: 'grayscale(100%)',
-                                        opacity: '0.8'
-                                    }}
-                                />
-                                Light {index + 1}
-                            </label>
-                        </div>
-                    ))}
-                </div>
-                
-                <div style={{ marginTop: 'auto' }}>
-                    <div style={{ marginBottom: '15px' }}>
-                        <label style={{ display: 'block', marginBottom: '5px', color: '#999' }}>
-                            Export Size
-                        </label>
+                    <div style={{ position: 'relative' }}>
                         <select
                             value={exportSize}
                             onChange={(e) => setExportSize(Number(e.target.value))}
-                            className="custom-select"
+                            style={{
+                                width: '100%',
+                                background: '#333',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                padding: '10px 12px',
+                                paddingRight: '40px',
+                                fontFamily: 'IBM Plex Mono, monospace',
+                                fontSize: '12px',
+                                cursor: 'pointer',
+                                outline: 'none',
+                                WebkitAppearance: 'none',
+                                MozAppearance: 'none',
+                                appearance: 'none',
+                                height: '36px',
+                                boxSizing: 'border-box'
+                            }}
                         >
+                            <option value={0.5}>0.5x (1200px)</option>
                             <option value={1}>1x (2400px)</option>
                             <option value={2}>2x (4800px)</option>
+                            <option value={3}>3x (7200px)</option>
                             <option value={4}>4x (9600px)</option>
                             <option value={8}>8x (19200px)</option>
                         </select>
+                        <div style={{
+                            position: 'absolute',
+                            right: '12px',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            pointerEvents: 'none',
+                            color: 'white',
+                            fontSize: '12px'
+                        }}>
+                            ▼
+                        </div>
                     </div>
-                    
-                    <div style={{ marginBottom: '20px' }}>
-                        <label style={{ cursor: 'pointer', color: '#ccc', display: 'flex', alignItems: 'center' }}>
-                            <input 
-                                type="checkbox" 
-                                checked={transparentBackground}
-                                onChange={(e) => setTransparentBackground(e.target.checked)}
-                                style={{ 
-                                    marginRight: '8px',
-                                    filter: 'grayscale(100%)',
-                                    opacity: '0.8'
-                                }}
-                            />
-                            Transparent Background
-                        </label>
-                    </div>
-                    
-                    <button 
-                        onClick={handleExportImage}
-                        style={{
-                            width: '100%',
-                            padding: '12px',
-                            background: 'white',
-                            color: 'black',
-                            border: 'none',
-                            borderRadius: '8px',
-                            cursor: 'pointer',
-                            fontFamily: 'inherit',
-                            fontSize: '14px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontWeight: '500'
-                        }}
-                    >
-                        <span>Export [E]</span>
-                    </button>
+                </div>
+                
+                <div>
+                    <label style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '8px', 
+                        cursor: 'pointer',
+                        color: '#999',
+                        fontSize: '12px'
+                    }}>
+                        <input 
+                            type="checkbox"
+                            checked={transparentBackground}
+                            onChange={(e) => setTransparentBackground(e.target.checked)}
+                            style={{
+                                width: '14px',
+                                height: '14px',
+                                accentColor: 'white'
+                            }}
+                        />
+                        Transparent Background
+                    </label>
+                </div>
+                
+                <button 
+                    onClick={handleExportImage}
+                    className="export-button"
+                >
+                    <span>Export</span>
+                    <span style={{ 
+                        background: '#333', 
+                        color: 'white', 
+                        padding: '6px 10px', 
+                        borderRadius: '4px',
+                        fontSize: '10px'
+                    }}>E</span>
+                </button>
+                
+                <div style={{ 
+                    color: '#666', 
+                    fontSize: '10px',
+                    textAlign: 'center'
+                }}>
+                    Press E on your keyboard to export
                 </div>
             </div>
             
+            {/* Copyright text - Bottom right of viewport */}
             <div style={{
-                flex: '1',
-                background: 'white',
-                border: '1px solid #D9D9D9',
-                borderRadius: '8px',
-                position: 'relative',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                overflow: 'hidden'
+                position: 'fixed',
+                bottom: '20px',
+                right: '20px',
+                color: '#999999',
+                fontSize: '12px',
+                fontFamily: 'IBM Plex Mono, monospace',
+                zIndex: 10
             }}>
-                <div id="ascii-container" ref={containerRef} style={{
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)'
-                }}></div>
-                <div style={{
-                    position: 'absolute',
-                    bottom: '10px',
-                    right: '15px',
-                    color: '#999999',
-                    fontSize: '12px',
-                    fontFamily: 'IBM Plex Mono, monospace'
-                }}>
-                    © 2025 a37 Inc.
-                </div>
+                © 2025 a37 Inc.
             </div>
         </div>
     );
